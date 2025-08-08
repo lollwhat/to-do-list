@@ -11,8 +11,14 @@ app.use(express.static("public"));
 
 app.set("view engine", "ejs");
 
-mongoose.connect(
-"mongodb+srv://brandonlcw2004:<db_password>@cluster0.tg7u4me.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0");
+// MongoDB connection with error handling
+mongoose.connect("mongodb+srv://brandonlcw2004:lolwhat@cluster0.tg7u4me.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0")
+    .then(() => {
+        console.log("Connected to MongoDB successfully!");
+    })
+    .catch((err) => {
+        console.error("MongoDB connection error:", err);
+    });
 
 const taskSchema = {
     name: {
@@ -23,7 +29,7 @@ const taskSchema = {
 
 const Task = mongoose.model("Task", taskSchema);
 
-app.get("/", function(req, res){
+app.get("/", async function(req, res){
     let today = new Date();
     let options = {
         weekday: "long",
@@ -33,13 +39,15 @@ app.get("/", function(req, res){
 
     let day = today.toLocaleDateString("en-US", options);
 
-    Task.find({}, function(err, foundTasks){
-        if (!err) {
-            res.render("list", { tasks: foundTasks });
-        }else{
-            console.log(err);
-        }
-    });
+    try {
+        const foundTasks = await Task.find({});
+        res.render("index", { 
+            tasks: foundTasks,
+            today: day 
+        });
+    } catch (err) {
+        console.log(err);
+    }
 });
 
 app.post("/", function(req, res){
@@ -57,14 +65,16 @@ app.post("/", function(req, res){
     }
 })
 
-app.post("/delete", function(req,res){
+app.post("/delete", async function(req,res){
     const checkedItemId = req.body.checkbox;
-    Task.findByIdAndRemove(checkedItemId, function(err){
-        if(!err){
-            console.log("Successfully deleted the task.");
-            res.redirect("/");
-        }
-    });
+    try {
+        await Task.findByIdAndDelete(checkedItemId);
+        console.log("Successfully deleted the task.");
+        res.redirect("/");
+    } catch (err) {
+        console.log(err);
+        res.redirect("/");
+    }
 });
 
 app.listen(process.env.PORT || 3000, function() {
